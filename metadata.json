@@ -1,0 +1,6 @@
+{
+  "name": "Lukulu Academy Curriculum Generator",
+  "description": "Comprehensive Curriculum & Syllabus Generator for Lukulu Academy & Recordings covering FL Studio, Cubase, Reason, Music Business, Afro House, Amapiano, and EDM.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
