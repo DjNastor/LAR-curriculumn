@@ -10,10 +10,10 @@ A React and Express application for building project-based music production curr
 ## Local development
 
 ```bash
-npm install
+bun install
 cp .env.example .env
 # Add GEMINI_API_KEY to .env
-npm run dev
+bun run dev
 ```
 
 The app runs on port `3000` by default. Set `PORT` to use another port. `GET /api/health` reports whether the AI key is configured without exposing it.
@@ -21,8 +21,8 @@ The app runs on port `3000` by default. Set `PORT` to use another port. `GET /ap
 ## Verification
 
 ```bash
-npm run lint
-npm run build
+bun run lint
+bun run build
 ```
 
 The app deliberately keeps the Gemini key on the Express server; do not put it in client-side Vite environment variables or commit `.env` files.
@@ -33,3 +33,7 @@ The app deliberately keeps the Gemini key on the Express server; do not put it i
 - `src/data/` — curriculum presets and groove patterns
 - `src/lib/` — Google integration helpers
 - `server.ts` — Express API and Gemini proxy
+
+## Continuous integration
+
+GitHub Actions runs the locked Bun install, TypeScript check, and production build for pushes and pull requests targeting `main`.

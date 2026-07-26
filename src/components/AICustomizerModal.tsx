@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Curriculum } from "../types";
 import { Sparkles, Sliders, Check, AlertCircle } from "lucide-react";
+import { postJson } from "../lib/api";
 
 interface AICustomizerModalProps {
   curriculum: Curriculum;
@@ -33,16 +34,10 @@ export const AICustomizerModal: React.FC<AICustomizerModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const response = await fetch("/api/refine-curriculum", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentCurriculum: curriculum,
-          userInstruction: textToUse,
-        }),
-      });
-
-      const data = await response.json();
+      const data = await postJson<{ success?: boolean; curriculum?: Curriculum; error?: string }>(
+        "/api/refine-curriculum",
+        { currentCurriculum: curriculum, userInstruction: textToUse }
+      );
 
       if (data.success && data.curriculum) {
         onUpdateCurriculum(data.curriculum);
@@ -50,8 +45,8 @@ export const AICustomizerModal: React.FC<AICustomizerModalProps> = ({
       } else {
         setErrorMsg(data.error || "Failed to refine curriculum");
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "Server connection error");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Server connection error");
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +110,9 @@ export const AICustomizerModal: React.FC<AICustomizerModalProps> = ({
             Or enter custom instruction:
           </label>
           <textarea
+            aria-label="Custom refinement instruction"
             rows={3}
+            maxLength={10000}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             placeholder="e.g. Add 2 extra weeks on stem mastering in FL Studio and expand the music business SAMRO split sheet lesson..."

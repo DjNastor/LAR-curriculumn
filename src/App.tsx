@@ -10,7 +10,8 @@ import { GoogleDriveModal } from "./components/GoogleDriveModal";
 import { GroovePlayer } from "./components/GroovePlayer";
 import { PRESET_TEMPLATES } from "./data/presets";
 import { Curriculum, CourseParams, PresetTemplate } from "./types";
-import { Disc, Sparkles, Layers, Volume2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { postJson } from "./lib/api";
 
 export default function App() {
   const [activeCurriculum, setActiveCurriculum] = useState<Curriculum>(
@@ -45,13 +46,10 @@ export default function App() {
     setErrorMsg(null);
 
     try {
-      const response = await fetch("/api/generate-curriculum", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      const data = await response.json();
+      const data = await postJson<{ success?: boolean; curriculum?: Curriculum; error?: string }>(
+        "/api/generate-curriculum",
+        params
+      );
 
       if (data.success && data.curriculum) {
         setActiveCurriculum(data.curriculum);
@@ -70,9 +68,9 @@ export default function App() {
         setCurrentPresetId(match.id);
         setIsFormOpen(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error generating curriculum:", err);
-      setErrorMsg("Network or API issue. Loaded default Lukulu Academy master blueprint.");
+      setErrorMsg(`${err instanceof Error ? err.message : "Network or API issue"}. Loaded default Lukulu Academy master blueprint.`);
       setActiveCurriculum(PRESET_TEMPLATES[0].curriculum);
       setIsFormOpen(false);
     } finally {
