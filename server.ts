@@ -7,7 +7,26 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+
+const MAX_DURATION_WEEKS = 52;
+
+function parseJsonResponse(text: string) {
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  return JSON.parse(cleaned);
+}
+
+function validateGenerationParams(body: Record<string, unknown>) {
+  const durationWeeks = Number(body.durationWeeks ?? 4);
+  if (!Number.isInteger(durationWeeks) || durationWeeks < 1 || durationWeeks > MAX_DURATION_WEEKS) {
+    return "durationWeeks must be an integer between 1 and 52.";
+  }
+  for (const field of ["targetAudience", "trackDaw", "genre", "focusArea", "customNotes"]) {
+    const value = body[field];
+    if (value !== undefined && typeof value !== "string") return `${field} must be a string.`;
+  }
+  return null;
+}
 
 app.use(express.json({ limit: "10mb" }));
 
@@ -49,8 +68,14 @@ Every response MUST be valid JSON (no surrounding markdown backticks if possible
 `;
 
 // API endpoint to generate custom curriculum
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, aiConfigured: Boolean(process.env.GEMINI_API_KEY) });
+});
+
 app.post("/api/generate-curriculum", async (req, res) => {
   try {
+    const validationError = validateGenerationParams(req.body ?? {});
+    if (validationError) return res.status(400).json({ error: validationError });
     const {
       targetAudience = "Beginner to Intermediate Producers",
       durationWeeks = 4,
@@ -162,17 +187,7 @@ Return a JSON object with this exact schema:
     });
 
     const responseText = response.text || "{}";
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseErr) {
-      // Clean codeblock markers if present
-      const cleaned = responseText
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
-      data = JSON.parse(cleaned);
-    }
+    const data = parseJsonResponse(responseText);
 
     return res.json({ success: true, curriculum: data });
   } catch (err: any) {
@@ -186,7 +201,16 @@ Return a JSON object with this exact schema:
 // API endpoint to refine / ask questions about a curriculum
 app.post("/api/refine-curriculum", async (req, res) => {
   try {
-    const { currentCurriculum, userInstruction } = req.body;
+    const { currentCurriculum, userInstruction } = req.body ?? {};
+    if (!currentCurriculum || typeof currentCurriculum !== "object") {
+      return res.status(400).json({ error: "currentCurriculum must be an object." });
+    }
+    if (typeof userInstruction !== "string" || userInstruction.trim().length === 0) {
+      return res.status(400).json({ error: "userInstruction is required." });
+    }
+    if (userInstruction.length > 10000) {
+      return res.status(400).json({ error: "userInstruction is too long (10,000 characters maximum)." });
+    }
     const ai = getGeminiClient();
 
     if (!ai) {
@@ -215,11 +239,7 @@ Return the updated complete curriculum JSON object.
     });
 
     const responseText = response.text || "{}";
-    const cleaned = responseText
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-    const data = JSON.parse(cleaned);
+    const data = parseJsonResponse(responseText);
 
     return res.json({ success: true, curriculum: data });
   } catch (err: any) {
