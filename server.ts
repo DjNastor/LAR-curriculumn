@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 const MAX_DURATION_WEEKS = 52;
@@ -24,11 +24,26 @@ function validateGenerationParams(body: Record<string, unknown>) {
   for (const field of ["targetAudience", "trackDaw", "genre", "focusArea", "customNotes"]) {
     const value = body[field];
     if (value !== undefined && typeof value !== "string") return `${field} must be a string.`;
+    if (typeof value === "string" && value.length > 2000) return `${field} is too long (2,000 characters maximum).`;
   }
   return null;
 }
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "1mb" }));
+
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const key = req.ip || "unknown";
+  const now = Date.now();
+  const current = requestCounts.get(key);
+  if (!current || current.resetAt <= now) {
+    requestCounts.set(key, { count: 1, resetAt: now + 60_000 });
+    return next();
+  }
+  if (current.count >= 20) return res.status(429).json({ error: "Too many requests. Please try again in a minute." });
+  current.count += 1;
+  return next();
+}
 
 // Initialize Gemini AI Client lazily/safely
 function getGeminiClient() {
@@ -72,7 +87,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, aiConfigured: Boolean(process.env.GEMINI_API_KEY) });
 });
 
-app.post("/api/generate-curriculum", async (req, res) => {
+app.post("/api/generate-curriculum", rateLimit, async (req, res) => {
   try {
     const validationError = validateGenerationParams(req.body ?? {});
     if (validationError) return res.status(400).json({ error: validationError });
@@ -199,7 +214,7 @@ Return a JSON object with this exact schema:
 });
 
 // API endpoint to refine / ask questions about a curriculum
-app.post("/api/refine-curriculum", async (req, res) => {
+app.post("/api/refine-curriculum", rateLimit, async (req, res) => {
   try {
     const { currentCurriculum, userInstruction } = req.body ?? {};
     if (!currentCurriculum || typeof currentCurriculum !== "object") {
@@ -268,4 +283,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.VERCEL !== "1") {
+  startServer();
+}
+
+export default app;

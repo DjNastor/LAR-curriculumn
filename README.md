@@ -1,22 +1,22 @@
 # Lukulu Academy Curriculum Generator
 
-A React and Express application for building project-based music production curricula for Lukulu Academy & Recordings. It includes presets for Afro House, Amapiano, EDM, DAW workflows, music business, export, Google Calendar/Drive integrations, and optional Gemini-powered generation and refinement.
+React, Vite, and Express app for building project-based music-production curricula for Lukulu Academy & Recordings. Includes Afro House, Amapiano, EDM, DAW, music-business, Google Calendar/Drive, and Gemini generation features.
 
 ## Requirements
 
-- Node.js 20+ (or Bun)
-- A Gemini API key for AI generation (`GEMINI_API_KEY`)
+- Node.js 24.x (or Bun 1.2.20)
+- `GEMINI_API_KEY` for AI generation
 
 ## Local development
 
 ```bash
-bun install
+bun install --frozen-lockfile
 cp .env.example .env
 # Add GEMINI_API_KEY to .env
 bun run dev
 ```
 
-The app runs on port `3000` by default. Set `PORT` to use another port. `GET /api/health` reports whether the AI key is configured without exposing it.
+The app runs on port `3000`. `GET /api/health` reports AI configuration without exposing the key.
 
 ## Verification
 
@@ -25,15 +25,14 @@ bun run lint
 bun run build
 ```
 
-The app deliberately keeps the Gemini key on the Express server; do not put it in client-side Vite environment variables or commit `.env` files.
+## Deployment
 
-## Project structure
+The repository targets Node.js 24.x through `.nvmrc`, `package.json`, and `vercel.json`. Add `GEMINI_API_KEY` in Vercel Project Settings → Environment Variables. Never prefix it with `VITE_`, since Vite exposes `VITE_*` values to the browser.
 
-- `src/components/` — curriculum editor, viewer, export, integrations, and groove player
-- `src/data/` — curriculum presets and groove patterns
-- `src/lib/` — Google integration helpers
-- `server.ts` — Express API and Gemini proxy
+Vercel serves the Vite frontend from `dist` and uses `api/index.ts` as the Node 24 serverless entry point. `VITE_API_URL` is optional and should remain empty when frontend and API share this Vercel project.
 
-## Continuous integration
+For Google Calendar/Drive, authorize the production domain in Firebase and Google Cloud OAuth settings and enable the requested APIs/scopes.
 
-GitHub Actions runs the locked Bun install, TypeScript check, and production build for pushes and pull requests targeting `main`.
+## Security
+
+Gemini credentials remain server-side. AI endpoints enforce request-size validation and a lightweight per-instance limit of 20 requests per minute per IP. Use a shared limiter such as Upstash for strict multi-instance limits.

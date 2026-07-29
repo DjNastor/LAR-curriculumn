@@ -31,8 +31,9 @@ export const initAuth = (
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else if (!isSigningIn) {
+        // Firebase may restore the user while the short-lived Google API token is gone.
+        // Keep the user signed in; the next Google API action can re-authorize.
         cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
       }
     } else {
       cachedAccessToken = null;
